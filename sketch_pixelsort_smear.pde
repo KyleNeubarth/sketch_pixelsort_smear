@@ -4,7 +4,7 @@ int numCandidates = 20;
 //else looks for the least similar color
 boolean inverse = false;
 //name of img to process, should be in images folder
-String imgName = "random.JPG";
+String imgName = "shell.jpg";
 
 /* everything above is a parameter */
 
@@ -41,7 +41,8 @@ void setup() {
 void draw() {
   if (i >= numPixels) {
     if (!done) {
-      save("output/output_"+imgName);
+      String savePrefix = (inverse)?"inverse_output_":"output_";
+      save("output/"+savePrefix+imgName);
       done = true;
     }
     return;
