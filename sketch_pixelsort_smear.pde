@@ -1,19 +1,27 @@
 import gifAnimation.*;
 
 //more candidates for a smoother, less random image
-int numCandidates = 20;
+int numCandidates = 200;
 //when false, each pixel looks for the most similar color in RGB space to the ones near it
 //else looks for the least similar color
-boolean inverse = false;
+boolean inverse = true;
 //uses gifAnimation to record a gif from frames, is extremely slow atm
 //Currently will not make gifs over roughly 1MB
-boolean recordGIF = true;
+boolean recordGIF = false;
+//if true, uses impression image to create distortion in the output
+boolean imageImpression = true;
+String impressionName = "destiny.png";
+//offset for impression image
+int impOffsetX = 100;
+int impOffsetY = 100;
 //name of img to process, should be in images folder
 String imgName = "random.JPG";
 
 /* everything above is a parameter */
 
 PImage image;
+
+PImage impImage;
 
 //i = x j = y 
 int i=0;
@@ -39,6 +47,15 @@ void settings() {
       println("cannot find image, abort");
     }
   }
+  if (imageImpression) {
+    impImage = loadImage("images/"+impressionName);
+    if (impImage == null) {
+      impImage = loadImage("localimages/"+impressionName);
+      if (impImage == null) {
+        println("cannot find impression image, abort");
+      }
+    }
+  }
   size(image.width,image.height);
   numPixels = image.width*image.height;
 }
@@ -61,8 +78,10 @@ void draw() {
       String savePrefix = (inverse)?"inverse_output_":"output_";
       save("output/"+savePrefix+imgName);
       done = true;
-      export();
-      finishexport();
+      if (recordGIF) {
+        export();
+        finishexport();
+      }
     }
     return;
   }
@@ -71,6 +90,7 @@ void draw() {
   image(image,0,0);
   //set(i%image.width,i/image.width,color(0,0,0));
   image.loadPixels();
+  impImage.loadPixels();
   
   processRow();
   i++;
@@ -86,16 +106,39 @@ void processRow() {
   j++;
 }
 
-void processPixel() {
-  for (int k=0;k<numCandidates;k++) {
-    getRandomPixel();
+float isImpression() {
+  int x = i%width;
+  if (x < impOffsetX || x >= impOffsetX + impImage.width) {
+    return -1;
   }
+  int y = i/width;
+  if (y < impOffsetY || y >= impOffsetY + impImage.height) {
+    return -1;
+  }
+  int newI = impimage.pixels[(x-impOffsetX + (y-impOffsetY) * impImage.width)];
+  if (alpha(newI) != 0) {
+    return  red(newI)*0.2989+ green(newI)*0.5870+blue(newI)* 0.1140;
+  }
+  return -1;
+}
+
+void processPixel() {
+  if (imageImpression && isImpression() ) {
+    for (int k=0;k<numCandidates/40;k++) {
+      getRandomPixel();
+    }
+  } else {
+    for (int k=0;k<numCandidates;k++) {
+      getRandomPixel();
+    }
+  }
+  
   //choice = index of closest color
   int choice = getClosestColor();
   int temp = image.pixels[i];
   image.pixels[i] = image.pixels[choice];
   image.pixels[choice] = temp;
-  
+
   currCandidates=0;
 }
 
@@ -103,8 +146,7 @@ int getColorFromArea(int index) {
   int r = 0;
   int g = 0;
   int b = 0;
-  int numColors = 0;
-  for (int x=-3; x<=-1;x++) {
+  int numColors = 0;  for (int x=-3; x<=-1;x++) {
     for (int y=-3; y<=-1;y++) {
       int pixelIndex = i+x+image.width*y;
       if (!isInImage(pixelIndex)) {
@@ -133,7 +175,7 @@ int getClosestColor() {
   int sourceColor = getColorFromArea(i);
   //print(i+"\n");
   float closestColor = getColorDistance(sourceColor,image.pixels[candidates[0] ]);
-  for (int k=1;k<numCandidates;k++) {
+  for (int k=1;k<currCandidates;k++) {
     float temp = getColorDistance(sourceColor,image.pixels[candidates[k] ]);
     if (inverse && (temp > closestColor) || !inverse && (temp < closestColor) ) {
       closest = k;
@@ -144,7 +186,12 @@ int getClosestColor() {
 }
 float getColorDistance(int a, int b) {
   //print("pixels a:" + a + " b: " + b + "\n");
-  return abs(red(a)-red(b) ) + abs(green(a)-green(b) ) + abs(blue(a)-blue(b) );
+  
+  return pow(pow(red(a)-red(b),2)+pow(green(a)-green(b),2)+pow(blue(a)-blue(b),2),.5f);
+  
+  //abs(red(a)-red(b) ) + abs(green(a)-green(b) ) + abs(blue(a)-blue(b) );
+  
+  //return abs(red(a)-red(b) ) + abs(green(a)-green(b) ) + abs(blue(a)-blue(b) );
 }
 
 void getRandomPixel() {
