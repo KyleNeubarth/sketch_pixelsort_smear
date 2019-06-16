@@ -4,7 +4,7 @@ import gifAnimation.*;
 int numCandidates = 200;
 //when false, each pixel looks for the most similar color in RGB space to the ones near it
 //else looks for the least similar color
-boolean inverse = false;
+boolean inverse = true;
 //uses gifAnimation to record a gif from frames, is extremely slow atm
 //Currently will not make gifs over roughly 1MB
 boolean recordGIF = false;
@@ -12,12 +12,14 @@ boolean recordGIF = false;
 //the number of candidate pixels processpixel picks.
 //Darker the pixel of impression image -> less candidates -> fuzzier section
 //if true, uses impression image to create distortion in the output
-boolean imageImpression = true;
-String impressionName = "bio.jpg";
-float impressionStrength = .5f;
+boolean imageImpression = false;
+String impressionName = "Daddoe.png";
+float impressionStrength = .3f;
 //offset for impression image
-int impOffsetX = 217;
-int impOffsetY = 100;
+int impOffsetX = 0;
+int impOffsetY = 0;
+//
+int colorAreaSize = 10;
 //name of img to process, should be in images folder
 String imgName = "random.JPG";
 
@@ -93,7 +95,9 @@ void draw() {
   image(image,0,0);
   //set(i%image.width,i/image.width,color(0,0,0));
   image.loadPixels();
-  impImage.loadPixels();
+  if (imageImpression) {
+    impImage.loadPixels();
+  }
   
   processRow();
   i++;
@@ -110,6 +114,9 @@ void processRow() {
 }
 
 float isImpression() {
+  if (!imageImpression) {
+    return -1;
+  }
   int x = i%width;
   if (x < impOffsetX || x >= impOffsetX + impImage.width) {
     return -1;
@@ -144,7 +151,12 @@ void processPixel() {
   int temp = image.pixels[i];
   image.pixels[i] = image.pixels[choice];
   image.pixels[choice] = temp;
-
+  
+  if (impVal > 0) {
+    float darkCoeff = .95f;
+    image.pixels[i] = color(darkCoeff*red(image.pixels[i]),darkCoeff*green(image.pixels[i]),darkCoeff*blue(image.pixels[i]));
+  }
+  
   currCandidates=0;
 }
 
@@ -152,8 +164,8 @@ int getColorFromArea(int index) {
   int r = 0;
   int g = 0;
   int b = 0;
-  int numColors = 0;  for (int x=-3; x<=-1;x++) {
-    for (int y=-3; y<=-1;y++) {
+  int numColors = 0;  for (int x=-colorAreaSize; x<=-1;x++) {
+    for (int y=-colorAreaSize; y<=-1;y++) {
       int pixelIndex = i+x+image.width*y;
       if (!isInImage(pixelIndex)) {
         continue;
