@@ -4,15 +4,19 @@ import gifAnimation.*;
 int numCandidates = 200;
 //when false, each pixel looks for the most similar color in RGB space to the ones near it
 //else looks for the least similar color
-boolean inverse = true;
+boolean inverse = false;
 //uses gifAnimation to record a gif from frames, is extremely slow atm
 //Currently will not make gifs over roughly 1MB
 boolean recordGIF = false;
+//the image impression stuff superimposes an image over the final piece by affecting
+//the number of candidate pixels processpixel picks.
+//Darker the pixel of impression image -> less candidates -> fuzzier section
 //if true, uses impression image to create distortion in the output
 boolean imageImpression = true;
-String impressionName = "destiny.png";
+String impressionName = "bio.jpg";
+float impressionStrength = .5f;
 //offset for impression image
-int impOffsetX = 100;
+int impOffsetX = 217;
 int impOffsetY = 100;
 //name of img to process, should be in images folder
 String imgName = "random.JPG";
@@ -86,7 +90,6 @@ void draw() {
     return;
   }
   background(100);
-  //print(i + "\n");
   image(image,0,0);
   //set(i%image.width,i/image.width,color(0,0,0));
   image.loadPixels();
@@ -115,18 +118,21 @@ float isImpression() {
   if (y < impOffsetY || y >= impOffsetY + impImage.height) {
     return -1;
   }
-  int newI = impimage.pixels[(x-impOffsetX + (y-impOffsetY) * impImage.width)];
+  int newI = impImage.pixels[(x-impOffsetX + (y-impOffsetY) * impImage.width)];
   if (alpha(newI) != 0) {
-    return  red(newI)*0.2989+ green(newI)*0.5870+blue(newI)* 0.1140;
+    return  impressionStrength * pow((255 - (red(newI)*0.2989f+ green(newI)*0.5870f+blue(newI)* 0.1140f) )/255,1);
   }
   return -1;
 }
 
 void processPixel() {
-  if (imageImpression && isImpression() ) {
-    for (int k=0;k<numCandidates/40;k++) {
+  float impVal = isImpression();
+  if (imageImpression && impVal != -1 ) {
+    for (int k=0;k<numCandidates/((numCandidates*.8)*impVal+1);k++) {
       getRandomPixel();
     }
+    //image.pixels[i] = color(impVal*255);
+    //return;
   } else {
     for (int k=0;k<numCandidates;k++) {
       getRandomPixel();
@@ -195,7 +201,6 @@ float getColorDistance(int a, int b) {
 }
 
 void getRandomPixel() {
-  //print("curr: " + currCandidates + "\n");
   int rand = i + floor(random(1)*(numPixels-i ) );
   candidates[currCandidates] = rand;
   currCandidates++;
